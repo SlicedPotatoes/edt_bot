@@ -8,7 +8,7 @@ const api = axios.create({
 });
 
 // Récupération du token de connexion en fonction du groupe
-async function login(group) {
+async function login(group, logger) {
   try {
     const data = {
       username: group == "C1" ? process.env.LOGIN_C1 : process.env.LOGIN_C2,
@@ -19,17 +19,17 @@ async function login(group) {
 
     return response.data.authToken;
   } catch (error) {
-    tools.logError("request.login : " + error);
+    logger.error("request.login : " + error + "\n\tGroup: " + group);
     return null;
   }
 }
 
 // Récupération de l'EDT en fonction du groupe
-async function schedule(group) {
+async function schedule(group, date, logger) {
   try {
-    const token = await login(group);
-    const start = tools.getStartOfWeek();
-    const end = tools.getEndOfWeek();
+    const token = await login(group, logger);
+    const start = tools.getStartOfWeek(date);
+    const end = tools.getEndOfWeek(date);
 
     const data = {
       authToken: token,
@@ -42,7 +42,7 @@ async function schedule(group) {
 
     return response.data;
   } catch (error) {
-    tools.logError("request.schedule : " + error);
+    logger.error("request.schedule : " + error + "\n\tGroup: " + group + "\n\tdate: " + date.toISOString());
   }
 }
 

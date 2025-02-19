@@ -1,16 +1,16 @@
 require("dotenv").config();
-const { ChannelType, AttachmentBuilder } = require("discord.js");
+const { ChannelType, AttachmentBuilder, PermissionsBitField, PermissionOverwrites } = require("discord.js");
 const fs = require("fs");
 
 const request = require("./request");
 const tools = require("./tools");
 const edtImage = require("./edtImage");
 
-async function getChannelID(channelName, client) {
+async function getChannelID(channelName, client, roleID, logger) {
   const guild = client.guilds.cache.get(process.env.IDSERVER);
 
   if (!guild) {
-    tools.logError("botHelper.getChannelID : Serveur introuvable.");
+    logger.error("botHelper.getChannelID : Serveur introuvable.");
     return;
   }
 
@@ -22,14 +22,25 @@ async function getChannelID(channelName, client) {
         name: channelName,
         type: ChannelType.GuildText,
         parent: process.env.PARENTCHANNEL,
+        permissionOverwrites: [
+          {
+            id: guild.roles.everyone.id,
+            deny: [PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ViewChannel],
+          },
+          {
+            id: roleID,
+            allow: [PermissionsBitField.Flags.ViewChannel],
+          },
+          {
+            id: process.env.ROLE_BOT,
+            allow: [PermissionsBitField.Flags.SendMessages],
+          },
+        ],
       });
 
-      // Ajouter role autorisé
-      // Enlever permission de parlé
-
-      console.log(`Le canal ${channelName} a été crée avec l'ID : ${channel.id}`);
+      logger.info(`Le canal ${channelName} a été crée avec l'ID : ${channel.id}`);
     } catch (error) {
-      tools.logError("botHelper.getChannelID : " + error);
+      logger.error("botHelper.getChannelID : " + error);
       return;
     }
   }
@@ -37,12 +48,20 @@ async function getChannelID(channelName, client) {
   return channel.id;
 }
 
-async function scheduleChanged(client, group, channelID) {
+async function sendEDT(client, channelID, message, data, date, logger) {
+  if (await edtImage.generateImage(data, tools.getStartOfWeek(date), logger)) {
+    const channel = client.channels.cache.get(channelID);
+    const attachment = new AttachmentBuilder("./output.png");
+    await channel.send({ content: message, files: [attachment] });
+  }
+}
+
+async function scheduleChanged(client, group, channelID, date, logger) {
   const prevSchedule = tools.readJSONFile(group == "C1" ? "lastEDTC1.txt" : "lastEDTC2.txt");
-  const currSchedule = await request.schedule(group);
+  const currSchedule = await request.schedule(group, date, logger);
 
   if (!currSchedule || currSchedule.length == 0) {
-    tools.logError("botHelper.scheduleChanged : currSchedule is null or empty");
+    logger.error("botHelper.scheduleChanged : currSchedule is null or empty");
     return;
   }
 
@@ -81,19 +100,36 @@ async function scheduleChanged(client, group, channelID) {
   }
 
   if (message.length != 0) {
-    edtImage.generateImage(tools.getStartOfWeek(), group);
-
-    const channel = client.channels.cache.get(channelID);
-
-    const attachment = new AttachmentBuilder("./output.png");
-
-    await channel.send({ content: message, files: [attachment] });
-
+    sendEDT(client, channelID, message, currSchedule, date, logger);
     fs.writeFileSync(group == "C1" ? "lastEDTC1.txt" : "lastEDTC2.txt", JSON.stringify(currSchedule), "utf-8");
   }
 }
 
+async function scheduleSaturdayTask(action) {
+  const timeUntilNextSaturday = tools.msUntilNextSaturday();
+
+  setTimeout(() => {
+    action();
+    setInterval(action, 7 * 24 * 60 * 60 * 1000);
+  }, timeUntilNextSaturday);
+}
+
+async function newWeekEDT(client, group, channelID, date, logger) {
+  const data = await request.schedule(group, date, logger);
+
+  if (!data || data.length == 0) {
+    logger.error("botHelper.newWeekEDT : donnée vide");
+    return false;
+  }
+
+  fs.writeFileSync(group == "C1" ? "lastEDTC1.txt" : "lastEDTC2.txt", JSON.stringify(data), "utf-8");
+
+  sendEDT(client, channelID, "Emploi du temps de la semaine :", data, date, logger);
+}
+
 module.exports = {
   getChannelID,
+  newWeekEDT,
   scheduleChanged,
+  scheduleSaturdayTask,
 };
