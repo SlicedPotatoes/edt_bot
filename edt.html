@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: Helvetica, sans-serif;
+      }
+
+      body {
+        color: #f0f0f0;
+      }
+
+      .schedule {
+        width: 100vw;
+        height: 100vh;
+        border-collapse: collapse;
+        table-layout: fixed;
+      }
+
+      .schedule th,
+      .schedule td {
+        text-align: center;
+        overflow: hidden;
+      }
+
+      .schedule th {
+        background-color: #2c3e50;
+        color: #fff;
+        height: 2.22%;
+      }
+
+      .schedule td {
+        background-color: #333;
+        padding: 1px;
+      }
+
+      .schedule tr {
+        height: 2.22vh;
+      }
+
+      .odd {
+        background-color: #313338 !important;
+      }
+      .even {
+        background-color: #2b2d31 !important;
+      }
+
+      .courCard {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: center;
+        overflow: hidden;
+        padding: 5px;
+        gap: 5px;
+        height: 100%;
+        border-radius: 0.5rem;
+      }
+      .firstContainer {
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+        gap: 5px;
+        width: 100%;
+      }
+      .typeCour {
+        background: white;
+        padding: 2px 5px;
+        border-radius: 0.5rem;
+        color: black;
+      }
+      .hours {
+        margin-left: auto;
+      }
+      .tp {
+        background: rgb(155, 89, 182);
+      }
+      .td {
+        background: rgb(52, 142, 219);
+      }
+      .cm {
+        background: rgb(255, 140, 0);
+      }
+      .ds {
+        background: rgb(255, 0, 0);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <table class="schedule">
+        <thead>
+          <tr>
+            <th>Horaires</th>
+            <th>Lundi</th>
+            <th>Mardi</th>
+            <th>Mercredi</th>
+            <th>Jeudi</th>
+            <th>Vendredi</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </body>
+  <script>
+    const data = JSON.parse("${dataEDT}");
+    let date = new Date("${years}", "${month}", "${day}", 8);
+
+    const events = data.plannings[0].events;
+
+    const hours = ["8h", "9h", "10h", "11h", "12h", "13h", "14h", "15h", "16h", "17h", "18h"];
+    const types = ["tp", "td", "cm", "ds"];
+    let currElement = 0;
+    let nextEvent = null;
+
+    const CodeCours = {
+      "R2.01": "Développement orienté objets",
+      "R2.02": "Développement d'applications avec IHM",
+      "R2.03": "Qualité de développement",
+      "R2.04": "Communication et fonctionnement bas niveau",
+      "R2.05": "Introduction aux services réseaux",
+      "R2.06": "Exploitation d'une base de données",
+      "R2.07": "Graphes",
+      "R2.08": "Outils numériques pour les statistiques descriptives",
+      "R2.09": "Méthodes numériques",
+      "R2.10": "Introduction à la gestion des systèmes d'information",
+      "R2.11": "Introduction au droit",
+      "R2.12": "Anglais",
+      "R2.13": "Communication technique",
+      "R2.14": "Projet professionnel et personnel",
+    };
+
+    // Skip les dates entérieure au début de la semaine (date)
+    for (let i = 0; i < events.length; i++) {
+      let d = new Date(events[i].startDateTime);
+      if (d >= date) {
+        currElement = i;
+        nextEvent = d;
+        break;
+      }
+    }
+
+    const parentElement = document.querySelector("tbody");
+    let rows = [];
+
+    // Création des lignes (tr)
+    for (let row = 0; row < 44; row++) {
+      const tr = document.createElement("tr");
+      rows.push(tr);
+
+      parentElement.appendChild(tr);
+      if (row % 4 == 0) {
+        const td = document.createElement("td");
+        td.textContent = hours[row / 4];
+        td.setAttribute("rowSpan", 4);
+        td.classList.add(row % 8 == 0 ? "even" : "odd");
+
+        tr.appendChild(td);
+      }
+    }
+
+    let countsCols = [0, 0, 0, 0, 0];
+
+    // Ajout des colones (td)
+    for (let col = 0; col < 5; col++) {
+      for (let row = 0; row < 44; row++) {
+        // Skip la ligne
+        if (countsCols[col] != 0) {
+          countsCols[col]--;
+          date.setMinutes(date.getMinutes() + 15);
+          continue;
+        }
+
+        const td = document.createElement("td");
+        td.classList.add(((row - (row % 4)) / 4 + col) % 2 == 0 ? "odd" : "even");
+
+        // Si l'event suivant dois être mis sur cette ligne
+        if (currElement < events.length && date.getTime() == nextEvent.getTime()) {
+          const end = new Date(events[currElement].endDateTime);
+          let diffInM = (end - nextEvent) / 60000;
+          let nbPlage = diffInM / 15;
+
+          td.rowSpan = nbPlage;
+          countsCols[col] = nbPlage - 1;
+
+          // Création des éléments d'un evenement
+          const courCard = document.createElement("div");
+
+          const firstContainer = document.createElement("div");
+          const typeCour = document.createElement("span");
+          const codeCour = document.createElement("span");
+          const labelCour = document.createElement("span");
+          const hours = document.createElement("span");
+          const group = document.createElement("span");
+
+          // Ajout des class / style
+          typeCour.classList.add("typeCour");
+          firstContainer.classList.add("firstContainer");
+          courCard.classList.add("courCard");
+          hours.classList.add("hours");
+
+          if (types.includes(events[currElement].course.type.toLowerCase())) {
+            courCard.classList.add(events[currElement].course.type.toLowerCase());
+          } else {
+            courCard.style.background = events[currElement].course.color;
+          }
+
+          labelCour.style.fontWeight = "bold";
+
+          // Ajout du contenue
+          typeCour.innerText = events[currElement].course.type;
+
+          for (const [key, value] of Object.entries(CodeCours)) {
+            if (events[currElement].course.label.includes(key)) {
+              codeCour.innerText = key;
+              labelCour.innerText = value;
+              break;
+            }
+          }
+
+          if (codeCour.innerText.length === 0) {
+            labelCour.innerText = events[currElement].course.label;
+          }
+
+          hours.innerText = nextEvent.getHours().toString().padStart(2, "0") + "h" + nextEvent.getMinutes().toString().padStart(2, "0") + " - " + end.getHours().toString().padStart(2, "0") + "h" + end.getMinutes().toString().padStart(2, "0");
+          group.innerText = events[currElement].groups[0].label;
+
+          // Ajout des éléments au DOM
+          firstContainer.appendChild(typeCour);
+          firstContainer.appendChild(codeCour);
+          firstContainer.appendChild(hours);
+          courCard.appendChild(firstContainer);
+          courCard.appendChild(labelCour);
+
+          if (events[currElement].teachers.length != 0) {
+            const teacher = document.createElement("span");
+            teacher.innerText = events[currElement].teachers[0].displayname;
+            courCard.appendChild(teacher);
+          }
+
+          courCard.appendChild(group);
+          td.appendChild(courCard);
+
+          // Passé a l'événement suivant
+          nextEvent = new Date(++currElement < events.length ? events[currElement].startDateTime : null);
+        } else {
+          td.innerHTML = "&nbsp;";
+        }
+
+        rows[row].appendChild(td);
+        date.setMinutes(date.getMinutes() + 15); // Incrémenté la date de 15mn
+      }
+      date.setHours(date.getHours() + 13); // Passé au jour suivant a 8h
+    }
+  </script>
+</html>
