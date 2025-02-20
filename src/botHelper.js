@@ -127,9 +127,57 @@ async function newWeekEDT(client, group, channelID, date, logger) {
   sendEDT(client, channelID, "Emploi du temps de la semaine :", data, date, logger);
 }
 
+async function notifyDS(client, channelsID, logger) {
+  const dsNotified = tools.readJSONFile("./notifiedDS.txt"); // Récupérer les DS déjà notifié
+  const data = tools.readJSONFile("./lastEDTC1.txt"); // Récupérer la liste des cours
+
+  // Pas de données de cours
+  if (data == null || data.length == 0) {
+    logger.error("botHelper.notifyDS : donnée vide");
+    return;
+  }
+
+  const dsSet = new Set(!dsNotified ? "" : dsNotified.ds.map(JSON.stringify));
+  const events = data.plannings[0].events;
+
+  // Supprimer les DS notifié qui sont passé
+  for (let key of dsSet) {
+    if (new Date(JSON.parse(key).startDateTime).getTime() < new Date().getTime()) {
+      dsSet.delete(key);
+    }
+  }
+
+  // Notifié les DS qui se trouve dans la liste des cours
+  // Si ils n'ont pas déjà été notifié
+  for (let i = 0; i < events.length; i++) {
+    if (events[i].course.type == "CM") {
+      const strEvent = JSON.stringify(events[i]);
+      if (!dsSet.has(strEvent)) {
+        const C1 = client.guilds.cache.get(process.env.IDSERVER).roles.cache.get(process.env.ROLE_C1);
+        const C2 = client.guilds.cache.get(process.env.IDSERVER).roles.cache.get(process.env.ROLE_C2);
+        client.channels.cache.get(channelsID[0]).send(`${C1} DS en ${events[i].course.label}, le ${tools.formatDateHeure(new Date(events[i].startDateTime))}`);
+        client.channels.cache.get(channelsID[1]).send(`${C2} DS en ${events[i].course.label}, le ${tools.formatDateHeure(new Date(events[i].startDateTime))}`);
+        dsSet.add(strEvent);
+      }
+    }
+  }
+
+  // Créer un objet JSON des DS Notifié
+  let jsonObject = {
+    ds: [],
+  };
+  for (let key of dsSet) {
+    jsonObject.ds.push(JSON.parse(key));
+  }
+
+  // Mettre a jour les DS notifié
+  fs.writeFileSync("./notifiedDS.txt", JSON.stringify(jsonObject), "utf-8");
+}
+
 module.exports = {
   getChannelID,
   newWeekEDT,
   scheduleChanged,
   scheduleSaturdayTask,
+  notifyDS,
 };

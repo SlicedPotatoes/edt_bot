@@ -4,42 +4,33 @@ const request = require("./request");
 const path = require("path");
 
 async function generateImage(data, date, logger) {
+  const originalHtml = fs.readFileSync("./edt.html", "utf-8");
+  const tempHtmlPath = "./edt_temp.html";
+
   try {
-    // Lancer un navigateur
+    let htmlWithData = originalHtml
+      .replace('"${dataEDT}"', `'${JSON.stringify(data)}'`)
+      .replace('"${years}"', date.getFullYear())
+      .replace('"${month}"', date.getMonth())
+      .replace('"${day}"', date.getDate());
+
+    fs.writeFileSync(tempHtmlPath, htmlWithData, "utf-8");
+
     const browser = await puppeteer.launch();
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1920, height: 1080 });
-
-    // Récupérer l'html
-    const html = fs.readFileSync("./edt.html", "utf-8");
-
-    // Modifier le fichier html
-    let htmlWithData = html.replace('"${dataEDT}"', "'" + JSON.stringify(data) + "'");
-    htmlWithData = htmlWithData.replace('"${years}"', date.getFullYear());
-    htmlWithData = htmlWithData.replace('"${month}"', date.getMonth());
-    htmlWithData = htmlWithData.replace('"${day}"', date.getDate());
-    fs.writeFileSync("./edt.html", htmlWithData, "utf-8");
-
-    // Ouvrir le fichier sur le navigateur
-    await page.goto("file:///" + path.resolve("edt.html"));
-
-    // Générer l'image
-    await page.screenshot({ path: "output.png" });
-
-    // Fermer le navigateur
-    await browser.close();
-
-    // Remettre le fichier par default
-    fs.writeFileSync("./edt.html", html, "utf-8");
-
-    return true;
+    try {
+      const page = await browser.newPage();
+      await page.setViewport({ width: 1920, height: 1080 });
+      await page.goto("file:///" + path.resolve(tempHtmlPath));
+      await page.screenshot({ path: "output.png" });
+    } finally {
+      await browser.close();
+    }
   } catch (error) {
     logger.error("edtImage.generateImage : " + error);
     return false;
   }
+  return true;
 }
-
-//generateImage(new Date(2025, 1, 24), "C1");
 
 module.exports = {
   generateImage,

@@ -33,15 +33,16 @@ client.once("ready", async () => {
   C2 = await botHelper.getChannelID("edt_c2", client, process.env.ROLE_C2, logger);
 
   // Chaque heure, vérifier les changements d'EDT
-  setInterval(() => {
-    botHelper.scheduleChanged(client, "C1", C1, new Date(/*2025, 1, 24*/), logger);
-    botHelper.scheduleChanged(client, "C2", C2, new Date(/*2025, 1, 24*/), logger);
+  setInterval(async () => {
+    await botHelper.scheduleChanged(client, "C1", C1, new Date(/*2025, 1, 24*/), logger);
+    await botHelper.scheduleChanged(client, "C2", C2, new Date(/*2025, 1, 24*/), logger);
+    await botHelper.notifyDS(client, [C1, C2], logger);
   }, 60 * 60 * 1000);
 
   // Chaque semaine, envoyer l'EDT
-  botHelper.scheduleSaturdayTask(() => {
-    botHelper.newWeekEDT(client, "C1", C1, new Date(/*2025, 1, 24*/), logger);
-    botHelper.newWeekEDT(client, "C2", C2, new Date(/*2025, 1, 24*/), logger);
+  botHelper.scheduleSaturdayTask(async () => {
+    await botHelper.newWeekEDT(client, "C1", C1, new Date(/*2025, 1, 24*/), logger);
+    await botHelper.newWeekEDT(client, "C2", C2, new Date(/*2025, 1, 24*/), logger);
   });
 });
 

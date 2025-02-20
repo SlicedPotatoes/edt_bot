@@ -107,8 +107,8 @@
     </div>
   </body>
   <script>
-    const data = JSON.parse("${dataEDT}");
-    let date = new Date("${years}", "${month}", "${day}", 8);
+    const data = JSON.parse('{"messages":[{"level":"","text":""}],"plannings":[{"id":"22400227","label":"EDT étudiant","type":"STUDENT","messages":[{"level":"","text":""}],"events":[],"default":true}]}');
+    let date = new Date(2025, 1, 17, 8);
 
     const events = data.plannings[0].events;
 
