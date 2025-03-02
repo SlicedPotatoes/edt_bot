@@ -1,5 +1,5 @@
 require("dotenv").config();
-const { ChannelType, AttachmentBuilder, PermissionsBitField, PermissionOverwrites } = require("discord.js");
+const { ChannelType, AttachmentBuilder, PermissionsBitField, PermissionOverwrites, EmbedBuilder } = require("discord.js");
 const fs = require("fs");
 
 const request = require("./request");
@@ -48,11 +48,12 @@ async function getChannelID(channelName, client, roleID, logger) {
   return channel.id;
 }
 
-async function sendEDT(client, channelID, message, data, date, logger) {
+async function sendEDT(client, channelID, embed, data, date, logger) {
   if (await edtImage.generateImage(data, tools.getStartOfWeek(date), logger)) {
     const channel = client.channels.cache.get(channelID);
-    const attachment = new AttachmentBuilder("./output.png");
-    await channel.send({ content: message, files: [attachment] });
+    const attachment = new AttachmentBuilder("./output.png").setName("image.png");
+    embed.setImage("attachment://image.png");
+    await channel.send({ embeds: [embed], files: [attachment] });
   }
 }
 
@@ -80,37 +81,39 @@ async function scheduleChanged(client, group, channelID, date, logger) {
   removed.sort(sortByStartTime);
   added.sort(sortByStartTime);
 
-  let message = "";
+  let description = "";
 
   if (removed.length != 0) {
-    message += "Les cours suivant on été supprimé: ";
+    description += "Les cours suivants ont été supprimés :";
 
     for (let i = 0; i < removed.length; i++) {
-      message += `\n - Le ${tools.formatDateHeure(new Date(removed[i].startDateTime))}: ${removed[i].course.label}`;
+      description += `\n - Le ${tools.formatDateHeure(new Date(removed[i].startDateTime))}: ${removed[i].course.label}`;
     }
-    message += "\n\n";
+    description += "\n\n";
   }
   if (added.length != 0) {
-    message += "Les cours suivant on été ajouté: ";
+    description += "Les cours suivants ont été ajoutés:";
 
     for (let i = 0; i < added.length; i++) {
-      message += `\n - Le ${tools.formatDateHeure(new Date(added[i].startDateTime))}: ${added[i].course.label}`;
+      description += `\n - Le ${tools.formatDateHeure(new Date(added[i].startDateTime))}: ${added[i].course.label}`;
     }
-    message += "\n";
+    description += "\n";
   }
 
-  if (message.length != 0) {
-    sendEDT(client, channelID, message, currSchedule, date, logger);
+  if (description.length != 0) {
+    const embed = new EmbedBuilder().setTitle("Changement d'emploi du temps").setDescription(description);
+    sendEDT(client, channelID, embed, currSchedule, date, logger);
     fs.writeFileSync(group == "C1" ? "lastEDTC1.txt" : "lastEDTC2.txt", JSON.stringify(currSchedule), "utf-8");
   }
 }
 
 async function scheduleSaturdayTask(action) {
-  const timeUntilNextSaturday = tools.msUntilNextSaturday();
+  const timeUntilNextSaturday = /*1000;*/ tools.msUntilNextSaturday();
 
   setTimeout(() => {
     action();
     setInterval(action, 7 * 24 * 60 * 60 * 1000);
+    //setInterval(action, 60 * 1000);
   }, timeUntilNextSaturday);
 }
 
@@ -124,7 +127,9 @@ async function newWeekEDT(client, group, channelID, date, logger) {
 
   fs.writeFileSync(group == "C1" ? "lastEDTC1.txt" : "lastEDTC2.txt", JSON.stringify(data), "utf-8");
 
-  sendEDT(client, channelID, "Emploi du temps de la semaine :", data, date, logger);
+  const embed = new EmbedBuilder().setTitle("Emploi du temps de la semaine");
+
+  sendEDT(client, channelID, embed, data, date, logger);
 }
 
 async function notifyDS(client, channelsID, logger) {
@@ -150,7 +155,7 @@ async function notifyDS(client, channelsID, logger) {
   // Notifié les DS qui se trouve dans la liste des cours
   // Si ils n'ont pas déjà été notifié
   for (let i = 0; i < events.length; i++) {
-    if (events[i].course.type == "CM") {
+    if (events[i].course.type == "DS") {
       const strEvent = JSON.stringify(events[i]);
       if (!dsSet.has(strEvent)) {
         const C1 = client.guilds.cache.get(process.env.IDSERVER).roles.cache.get(process.env.ROLE_C1);

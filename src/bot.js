@@ -32,6 +32,11 @@ client.once("ready", async () => {
   C1 = await botHelper.getChannelID("edt_c1", client, process.env.ROLE_C1, logger);
   C2 = await botHelper.getChannelID("edt_c2", client, process.env.ROLE_C2, logger);
 
+  //Lancement du bot
+  await botHelper.newWeekEDT(client, "C1", C1, new Date(), logger);
+  await botHelper.newWeekEDT(client, "C2", C2, new Date(), logger);
+  await botHelper.notifyDS(client, [C1, C2], logger);
+
   // Chaque heure, vérifier les changements d'EDT
   setInterval(async () => {
     await botHelper.scheduleChanged(client, "C1", C1, new Date(/*2025, 1, 24*/), logger);
@@ -43,6 +48,7 @@ client.once("ready", async () => {
   botHelper.scheduleSaturdayTask(async () => {
     await botHelper.newWeekEDT(client, "C1", C1, new Date(/*2025, 1, 24*/), logger);
     await botHelper.newWeekEDT(client, "C2", C2, new Date(/*2025, 1, 24*/), logger);
+    await botHelper.notifyDS(client, [C1, C2], logger);
   });
 });
 

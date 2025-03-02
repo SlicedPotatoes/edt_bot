@@ -1,1 +1,0 @@
-{"messages":[{"level":"","text":""}],"plannings":[{"id":"22400227","label":"EDT étudiant","type":"STUDENT","messages":[{"level":"","text":""}],"events":[],"default":true}]}
