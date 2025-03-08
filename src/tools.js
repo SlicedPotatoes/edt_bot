@@ -62,6 +62,10 @@ function readJSONFile(path) {
   return JSON.parse(strJSON);
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 module.exports = {
   getStartOfWeek,
   getEndOfWeek,
@@ -69,4 +73,5 @@ module.exports = {
   formatDateHeure,
   msUntilNextSaturday,
   readJSONFile,
+  sleep,
 };

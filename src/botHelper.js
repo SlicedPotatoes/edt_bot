@@ -5,6 +5,9 @@ const fs = require("fs");
 const request = require("./request");
 const tools = require("./tools");
 const edtImage = require("./edtImage");
+const { stringify } = require("querystring");
+const { add } = require("winston");
+const { log } = require("console");
 
 async function getChannelID(channelName, client, roleID, logger) {
   const guild = client.guilds.cache.get(process.env.IDSERVER);
@@ -71,11 +74,29 @@ async function scheduleChanged(client, group, channelID, date, logger) {
     return;
   }
 
-  const oldSet = new Set(prevSchedule.plannings[0].events.map(JSON.stringify));
-  const newSet = new Set(currSchedule.plannings[0].events.map(JSON.stringify));
+  const oldS = {};
+  const newS = {};
 
-  const removed = [...oldSet].filter((item) => !newSet.has(item)).map(JSON.parse);
-  const added = [...newSet].filter((item) => !oldSet.has(item)).map(JSON.parse);
+  for (const el of prevSchedule.plannings[0].events) {
+    oldS[el.id] = el;
+  }
+  for (const el of currSchedule.plannings[0].events) {
+    newS[el.id] = el;
+  }
+
+  const removed = [];
+  const added = [];
+
+  for (const el in oldS) {
+    if (!(el in newS)) {
+      removed.push(oldS[el]);
+    }
+  }
+  for (const el in newS) {
+    if (!(el in oldS)) {
+      added.push(newS[el]);
+    }
+  }
 
   const sortByStartTime = (a, b) => new Date(a.startDateTime) - new Date(b.startDateTime);
   removed.sort(sortByStartTime);
@@ -142,27 +163,33 @@ async function notifyDS(client, channelsID, logger) {
     return;
   }
 
-  const dsSet = new Set(!dsNotified ? "" : dsNotified.ds.map(JSON.stringify));
+  const ds = {};
   const events = data.plannings[0].events;
 
+  if (dsNotified) {
+    for (const el of dsNotified["ds"]) {
+      ds[el.id] = el;
+    }
+  }
+
   // Supprimer les DS notifié qui sont passé
-  for (let key of dsSet) {
-    if (new Date(JSON.parse(key).startDateTime).getTime() < new Date().getTime()) {
-      dsSet.delete(key);
+  for (let key in ds) {
+    if (new Date(ds[key].startDateTime).getTime() < new Date().getTime()) {
+      delete ds[key];
     }
   }
 
   // Notifié les DS qui se trouve dans la liste des cours
   // Si ils n'ont pas déjà été notifié
   for (let i = 0; i < events.length; i++) {
-    if (events[i].course.type == "DS") {
-      const strEvent = JSON.stringify(events[i]);
-      if (!dsSet.has(strEvent)) {
+    const event = events[i];
+    if (event.course.type == "CM" && new Date(event.startDateTime).getTime() >= new Date().getTime()) {
+      if (!(event.id in ds)) {
         const C1 = client.guilds.cache.get(process.env.IDSERVER).roles.cache.get(process.env.ROLE_C1);
         const C2 = client.guilds.cache.get(process.env.IDSERVER).roles.cache.get(process.env.ROLE_C2);
-        client.channels.cache.get(channelsID[0]).send(`${C1} DS en ${events[i].course.label}, le ${tools.formatDateHeure(new Date(events[i].startDateTime))}`);
-        client.channels.cache.get(channelsID[1]).send(`${C2} DS en ${events[i].course.label}, le ${tools.formatDateHeure(new Date(events[i].startDateTime))}`);
-        dsSet.add(strEvent);
+        client.channels.cache.get(channelsID[0]).send(`${C1} DS en ${event.course.label}, le ${tools.formatDateHeure(new Date(event.startDateTime))}`);
+        client.channels.cache.get(channelsID[1]).send(`${C2} DS en ${event.course.label}, le ${tools.formatDateHeure(new Date(event.startDateTime))}`);
+        ds[event.id] = event;
       }
     }
   }
@@ -171,8 +198,8 @@ async function notifyDS(client, channelsID, logger) {
   let jsonObject = {
     ds: [],
   };
-  for (let key of dsSet) {
-    jsonObject.ds.push(JSON.parse(key));
+  for (let key in ds) {
+    jsonObject.ds.push(ds[key]);
   }
 
   // Mettre a jour les DS notifié
