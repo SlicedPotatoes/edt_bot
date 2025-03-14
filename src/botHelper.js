@@ -36,7 +36,7 @@ async function getChannelID(channelName, client, roleID, logger) {
           },
           {
             id: process.env.ROLE_BOT,
-            allow: [PermissionsBitField.Flags.SendMessages],
+            allow: [PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.AttachFiles, PermissionsBitField.Flags.EmbedLinks, PermissionsBitField.Flags.ViewChannel],
           },
         ],
       });
