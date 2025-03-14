@@ -35,26 +35,20 @@ client.once("ready", async () => {
 
   //Lancement du bot
   await botHelper.newWeekEDT(client, "C1", C1, new Date(), logger);
-  await tools.sleep(1000);
   await botHelper.newWeekEDT(client, "C2", C2, new Date(), logger);
-  await tools.sleep(1000);
   await botHelper.notifyDS(client, [C1, C2], logger);
 
   // Chaque heure, vérifier les changements d'EDT
   setInterval(async () => {
     await botHelper.scheduleChanged(client, "C1", C1, new Date(), logger);
-    await tools.sleep(1000);
     await botHelper.scheduleChanged(client, "C2", C2, new Date(), logger);
-    await tools.sleep(1000);
     await botHelper.notifyDS(client, [C1, C2], logger);
   }, 60 * 60 * 1000);
 
   // Chaque semaine, envoyer l'EDT
   botHelper.scheduleSaturdayTask(async () => {
     await botHelper.newWeekEDT(client, "C1", C1, new Date(), logger);
-    await tools.sleep(1000);
     await botHelper.newWeekEDT(client, "C2", C2, new Date(), logger);
-    await tools.sleep(1000);
     await botHelper.notifyDS(client, [C1, C2], logger);
   });
 });

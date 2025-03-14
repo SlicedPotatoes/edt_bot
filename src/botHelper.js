@@ -52,9 +52,9 @@ async function getChannelID(channelName, client, roleID, logger) {
 }
 
 async function sendEDT(client, channelID, embed, data, date, logger) {
-  if (await edtImage.generateImage(data, tools.getStartOfWeek(date), logger)) {
+  if (await edtImage.generateImage(data, tools.getStartOfWeek(date), logger, channelID)) {
     const channel = client.channels.cache.get(channelID);
-    const attachment = new AttachmentBuilder("./output.png").setName("image.png");
+    const attachment = new AttachmentBuilder("./output_" + channelID + ".png").setName("image.png");
     embed.setImage("attachment://image.png");
     await channel.send({ embeds: [embed], files: [attachment] });
   }
