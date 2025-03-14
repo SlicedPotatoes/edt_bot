@@ -9,7 +9,7 @@ async function generateImage(data, date, logger, group) {
 
   try {
     let htmlWithData = originalHtml
-      .replace('"${dataEDT}"', `\`${JSON.stringify(data)}\``)
+      .replace('"${dataEDT}"', `\`${JSON.stringify(data).replace("`", "`")}\``)
       .replace('"${years}"', date.getFullYear())
       .replace('"${month}"', date.getMonth())
       .replace('"${day}"', date.getDate());
