@@ -183,7 +183,7 @@ async function notifyDS(client, channelsID, logger) {
   // Si ils n'ont pas déjà été notifié
   for (let i = 0; i < events.length; i++) {
     const event = events[i];
-    if (event.course.type == "CM" && new Date(event.startDateTime).getTime() >= new Date().getTime()) {
+    if (event.course.type == "DS" && new Date(event.startDateTime).getTime() >= new Date().getTime()) {
       if (!(event.id in ds)) {
         const C1 = client.guilds.cache.get(process.env.IDSERVER).roles.cache.get(process.env.ROLE_C1);
         const C2 = client.guilds.cache.get(process.env.IDSERVER).roles.cache.get(process.env.ROLE_C2);
